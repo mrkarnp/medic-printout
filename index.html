@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Medication Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,700;0,800;0,900;1,400&family=Fredoka+One&display=swap" rel="stylesheet">
+<style>
+:root {
+  --teal: #4ecdc4;
+  --blue: #45b7d1;
+  --soft-blue: #b8e4f0;
+  --bg: #edf6fb;
+  --card: #ffffff;
+  --border: #c5e8f0;
+  --text: #2d4a5a;
+  --muted: #7aa0b0;
+  --purple: #b39ddb;
+  --green: #80cbc4;
+  --yellow: #fff176;
+  --pink: #f48fb1;
+  --orange: #ffcc80;
+  --lime: #c5e1a5;
+  --red: #ef9a9a;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  font-family: 'Nunito', sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  padding-bottom: 40px;
+}
+
+/* ── TOP BAR ── */
+.topbar {
+  background: linear-gradient(135deg, #5bc4cc 0%, #45b7d1 100%);
+  padding: 18px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 20px rgba(91,196,204,0.3);
+}
+.topbar-title {
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.8rem;
+  color: #fff;
+  letter-spacing: 1.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.topbar-title span { font-size: 1.5rem; }
+.med-count {
+  background: rgba(255,255,255,0.25);
+  color: #fff;
+  font-family: 'Fredoka One', cursive;
+  font-size: 0.85rem;
+  padding: 5px 14px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+}
+
+/* ── PATIENT PROFILE BANNER ── */
+.profile-banner {
+  background: linear-gradient(135deg, #e0f7fa 0%, #f0fafa 50%, #e8f4fd 100%);
+  border-bottom: 2.5px solid var(--border);
+  padding: 16px 28px;
+}
+.profile-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.profile-avatar-wrap {
+  position: relative; flex-shrink: 0;
+}
+.profile-avatar {
+  width: 64px; height: 64px; border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--teal);
+  box-shadow: 0 3px 12px rgba(78,205,196,0.25);
+  display: block;
+}
+.profile-avatar-placeholder {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: linear-gradient(135deg, #b8e4f0, #d0f0f0);
+  border: 3px solid var(--teal);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem;
+  box-shadow: 0 3px 12px rgba(78,205,196,0.2);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.profile-avatar-placeholder:hover { transform: scale(1.05); }
+.avatar-upload-btn {
+  position: absolute; bottom: -2px; right: -2px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--teal); color: #fff; border: 2px solid #fff;
+  font-size: 0.65rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+.avatar-file-input {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer;
+  width: 100%; height: 100%; border-radius: 50%;
+}
+.profile-fields {
+  display: flex; gap: 12px; flex: 1; flex-wrap: wrap; align-items: flex-end;
+}
+.profile-field {
+  display: flex; flex-direction: column; gap: 3px; min-width: 140px; flex: 1;
+}
+.profile-field label {
+  font-size: 0.66rem; font-weight: 800; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1.2px;
+}
+.profile-field input {
+  background: rgba(255,255,255,0.8);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 7px 12px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  width: 100%;
+}
+.profile-field input:focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(78,205,196,0.15);
+  background: #fff;
+}
+.profile-field input::placeholder { color: #b0c8d0; font-weight: 600; }
+.profile-display-name {
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.1rem;
+  color: #3a8fa0;
+  min-width: 160px;
+}
+.profile-save-btn {
+  background: var(--teal); color: #fff; border: none;
+  border-radius: 10px; padding: 8px 18px;
+  font-family: 'Fredoka One', cursive; font-size: 0.9rem;
+  cursor: pointer; letter-spacing: 0.5px;
+  transition: background 0.2s, transform 0.1s;
+  box-shadow: 0 3px 10px rgba(78,205,196,0.25);
+  white-space: nowrap; align-self: flex-end;
+}
+.profile-save-btn:hover { background: #3ab8b0; transform: translateY(-1px); }
+.profile-tags {
+  display: flex; gap: 8px; flex-wrap: wrap; align-self: center; margin-left: 4px;
+}
+.profile-tag {
+  background: rgba(255,255,255,0.9); border: 2px solid var(--border);
+  border-radius: 20px; padding: 4px 12px;
+  font-size: 0.78rem; font-weight: 800; color: #5a8090;
+  display: flex; align-items: center; gap: 5px;
+}
+.profile-tag .tag-icon { font-size: 0.9rem; }
+
+
+.container {
+  max-width: 1100px;
+  margin: 28px auto;
+  padding: 0 20px;
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* ── FORM PANEL ── */
+.form-panel {
+  background: var(--card);
+  border-radius: 20px;
+  border: 2.5px solid var(--border);
+  box-shadow: 0 6px 24px rgba(91,196,204,0.1);
+  overflow: hidden;
+  position: sticky;
+  top: 20px;
+}
+.form-header {
+  background: linear-gradient(135deg, #b8e4f0 0%, #d0f0f0 100%);
+  padding: 16px 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 2px solid var(--border);
+}
+.form-header h2 {
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.15rem;
+  color: #3a8fa0;
+  letter-spacing: 0.5px;
+}
+.form-header .icon { font-size: 1.4rem; }
+
+.form-body { padding: 20px; }
+
+.field-group {
+  margin-bottom: 14px;
+}
+label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 5px;
+}
+
+input[type="text"],
+input[type="date"],
+input[type="number"],
+select, textarea {
+  width: 100%;
+  background: #f3f9fc;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.88rem;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(78,205,196,0.15);
+  background: #fff;
+}
+textarea { resize: vertical; min-height: 58px; }
+select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%234ecdc4' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+/* Photo upload */
+.photo-upload-area {
+  border: 2.5px dashed var(--border);
+  border-radius: 12px;
+  background: #f3f9fc;
+  padding: 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.photo-upload-area:hover { border-color: var(--teal); background: #eaf7f7; }
+.photo-upload-area input[type="file"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  border: none; background: none; padding: 0;
+}
+.photo-upload-area input[type="file"]:focus { box-shadow: none; }
+.photo-preview-wrap { position: relative; display: inline-block; }
+.photo-preview {
+  width: 72px; height: 72px; border-radius: 12px;
+  object-fit: cover; border: 2.5px solid var(--border);
+  display: block;
+}
+.photo-remove {
+  position: absolute; top: -6px; right: -6px;
+  background: #e74c3c; color: #fff; border: none;
+  border-radius: 50%; width: 20px; height: 20px;
+  font-size: 0.65rem; cursor: pointer; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  z-index: 2;
+}
+.upload-placeholder { pointer-events: none; }
+.upload-placeholder .upload-icon { font-size: 1.8rem; display: block; margin-bottom: 4px; }
+.upload-placeholder p { font-size: 0.75rem; font-weight: 700; color: var(--muted); }
+.upload-placeholder small { font-size: 0.68rem; color: #aac; }
+
+/* Card photo */
+.card-photo-wrap {
+  padding: 10px 0 10px 12px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.card-photo {
+  width: 56px; height: 56px; border-radius: 10px;
+  object-fit: cover; border: 2.5px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.card-photo-placeholder {
+  width: 56px; height: 56px; border-radius: 10px;
+  background: #f0f8fc; border: 2px dashed var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem;
+}
+
+/* Color picker */
+.color-label { font-size: 0.72rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 7px; display: block; }
+.color-swatches {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.swatch {
+  width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+  border: 3px solid transparent;
+  transition: transform 0.15s, border-color 0.15s;
+  position: relative;
+}
+.swatch:hover { transform: scale(1.2); }
+.swatch.selected { border-color: var(--text); transform: scale(1.1); }
+.swatch.selected::after {
+  content: '✓'; position: absolute; inset: 0; display: flex;
+  align-items: center; justify-content: center;
+  font-size: 0.65rem; color: #fff; font-weight: 900;
+}
+
+/* Frequency quick-pick */
+.freq-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+.chip {
+  background: #edf6fb; border: 1.5px solid var(--border);
+  border-radius: 20px; padding: 4px 10px;
+  font-size: 0.72rem; font-weight: 700; color: var(--muted);
+  cursor: pointer; transition: all 0.15s;
+}
+.chip:hover, .chip.active { background: var(--teal); border-color: var(--teal); color: #fff; }
+
+/* Submit button */
+.btn-submit {
+  width: 100%;
+  background: linear-gradient(135deg, #4ecdc4, #45b7d1);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px;
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.05rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 4px 14px rgba(78,205,196,0.3);
+}
+.btn-submit:hover { opacity: 0.92; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(78,205,196,0.4); }
+.btn-submit:active { transform: translateY(0); }
+
+.btn-cancel {
+  width: 100%; background: #f3f9fc; color: var(--muted);
+  border: 2px solid var(--border); border-radius: 12px;
+  padding: 10px; font-family: 'Fredoka One', cursive;
+  font-size: 0.95rem; cursor: pointer; margin-top: 8px;
+  transition: background 0.15s;
+}
+.btn-cancel:hover { background: #e0f0f5; }
+
+/* ── LIST PANEL ── */
+.list-panel {}
+
+.list-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
+}
+.list-toolbar h2 {
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.3rem;
+  color: #3a8fa0;
+}
+.search-wrap { position: relative; }
+.search-wrap input {
+  width: 220px; padding-left: 34px;
+  background: #fff; border: 2px solid var(--border);
+  border-radius: 30px; font-size: 0.82rem;
+}
+.search-icon {
+  position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  font-size: 0.9rem; color: var(--muted); pointer-events: none;
+}
+
+/* Med cards */
+.med-card {
+  background: var(--card);
+  border-radius: 18px;
+  border: 2.5px solid var(--border);
+  margin-bottom: 12px;
+  overflow: hidden;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.05);
+  animation: slideIn 0.3s ease;
+  transition: box-shadow 0.2s;
+}
+.med-card:hover { box-shadow: 0 6px 22px rgba(91,196,204,0.15); }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.card-top {
+  display: flex; align-items: center; gap: 0;
+}
+.card-color-bar {
+  width: 12px; min-height: 80px; flex-shrink: 0;
+  border-radius: 0;
+}
+.card-pill-icon {
+  padding: 0 14px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.pill-svg { width: 44px; height: 20px; }
+.card-main {
+  flex: 1; padding: 14px 14px 14px 4px;
+}
+.card-name {
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.card-meta {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 6px;
+}
+.badge {
+  background: #edf6fb; border: 1.5px solid var(--border);
+  border-radius: 20px; padding: 2px 9px;
+  font-size: 0.72rem; font-weight: 700; color: #5a8090;
+}
+.badge.dose  { background: #e8f5e9; border-color: #a5d6a7; color: #388e3c; }
+.badge.route { background: #e3f2fd; border-color: #90caf9; color: #1976d2; }
+.badge.refills { background: #fff3e0; border-color: #ffcc80; color: #e65100; }
+.badge.reason { background: #fce4ec; border-color: #f48fb1; color: #c2185b; }
+
+.card-freq { font-size: 0.8rem; color: var(--muted); font-style: italic; }
+.card-notes { font-size: 0.75rem; color: #aac; margin-top: 3px; }
+.card-date  { font-size: 0.72rem; color: #b0c8d0; margin-top: 2px; }
+
+.card-actions {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 14px 16px 14px 0; align-items: flex-end;
+}
+.btn-edit, .btn-delete {
+  border: none; border-radius: 8px; padding: 6px 14px;
+  font-family: 'Nunito', sans-serif; font-weight: 800;
+  font-size: 0.76rem; cursor: pointer; transition: all 0.15s;
+}
+.btn-edit   { background: #e3f6f5; color: #3a8fa0; }
+.btn-delete { background: #fde8e8; color: #c0392b; }
+.btn-edit:hover   { background: var(--teal); color: #fff; }
+.btn-delete:hover { background: #e74c3c; color: #fff; }
+
+/* Empty state */
+.empty {
+  text-align: center; padding: 60px 20px; color: var(--muted);
+}
+.empty .icon { font-size: 3.5rem; display: block; margin-bottom: 12px; }
+.empty p { font-size: 1rem; font-weight: 600; }
+.empty small { font-size: 0.82rem; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+  background: #2d4a5a; color: #fff;
+  padding: 12px 24px; border-radius: 30px;
+  font-weight: 700; font-size: 0.88rem;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+  transition: transform 0.3s ease;
+  z-index: 999;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* Print button */
+.print-btn {
+  background: rgba(255,255,255,0.22);
+  color: #fff;
+  border: 2px solid rgba(255,255,255,0.5);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-family: 'Fredoka One', cursive;
+  font-size: 0.88rem;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: background 0.2s, transform 0.1s;
+}
+.print-btn:hover { background: rgba(255,255,255,0.35); transform: translateY(-1px); }
+
+/* Print */
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body { background: #fff !important; padding: 0; font-family: 'Nunito', sans-serif; }
+
+  /* Hide UI chrome */
+  .topbar, .form-panel, .list-toolbar, .card-actions,
+  .profile-save-btn, .avatar-upload-btn, .avatar-file-input,
+  .profile-field input, .toast, .profile-fields { display: none !important; }
+
+  /* Profile banner – printed as read-only display */
+  .profile-banner {
+    background: linear-gradient(135deg, #e0f7fa, #e8f4fd) !important;
+    border-bottom: 2px solid #b8e4f0 !important;
+    padding: 14px 24px !important;
+    -webkit-print-color-adjust: exact;
+  }
+  .print-profile-info { display: flex !important; }
+  .container {
+    grid-template-columns: 1fr !important;
+    margin: 12px auto !important;
+    padding: 0 16px !important;
+  }
+
+  /* Cards become compact table rows */
+  .med-card {
+    border-radius: 10px !important;
+    margin-bottom: 8px !important;
+    box-shadow: none !important;
+    border: 1.5px solid #c5e8f0 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .card-color-bar { width: 8px !important; }
+  .card-main { padding: 10px 10px 10px 4px !important; }
+  .card-name { font-size: 1rem !important; }
+  .badge { font-size: 0.68rem !important; padding: 2px 7px !important; }
+  .card-photo { width: 44px !important; height: 44px !important; }
+  .card-photo-placeholder { width: 44px !important; height: 44px !important; font-size: 1.1rem !important; }
+  .card-photo-wrap { padding: 8px 0 8px 10px !important; }
+
+  /* Print header */
+  .print-header {
+    display: block !important;
+    text-align: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #b8e4f0;
+  }
+  .print-date {
+    font-size: 0.75rem;
+    color: #7aa0b0;
+    margin-top: 4px;
+  }
+}
+
+@media (max-width: 768px) {
+  .container { grid-template-columns: 1fr; }
+  .form-panel { position: static; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-title">
+    <span>💊</span> MEDICATION LIST
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="med-count" id="medCountBadge">0 medications</div>
+    <button class="print-btn" onclick="printList()">&#128424; Print</button>
+  </div>
+</div>
+<!-- PATIENT PROFILE BANNER -->
+<div class="profile-banner">
+  <div class="profile-inner">
+
+    <!-- Avatar -->
+    <div class="profile-avatar-wrap" id="avatarWrap">
+      <div class="profile-avatar-placeholder" id="avatarPlaceholder" title="Upload photo">
+        👤
+        <input type="file" class="avatar-file-input" id="avatarFileInput" accept="image/*" onchange="handleAvatarUpload(event)">
+      </div>
+      <img id="avatarImg" class="profile-avatar" src="" alt="Patient" style="display:none">
+      <div class="avatar-upload-btn" onclick="document.getElementById('avatarFileInput').click()" title="Change photo">📷</div>
+    </div>
+
+    <!-- Input fields -->
+    <div class="profile-fields" id="profileFields">
+      <div class="profile-field">
+        <label>👤 Full Name</label>
+        <input type="text" id="p_name" placeholder="Enter patient name…" oninput="markProfileDirty()">
+      </div>
+      <div class="profile-field" style="max-width:90px">
+        <label>🎂 Age</label>
+        <input type="number" id="p_age" placeholder="—" min="0" max="130" oninput="markProfileDirty()">
+      </div>
+      <div class="profile-field" style="max-width:110px">
+        <label>⚖️ Weight</label>
+        <input type="text" id="p_weight" placeholder="e.g. 65 kg" oninput="markProfileDirty()">
+      </div>
+      <div class="profile-field" style="max-width:110px">
+        <label>📏 Height</label>
+        <input type="text" id="p_height" placeholder="e.g. 170 cm" oninput="markProfileDirty()">
+      </div>
+      <button class="profile-save-btn" id="profileSaveBtn" onclick="saveProfile()" style="display:none">💾 Save</button>
+    </div>
+
+    <!-- Print-only profile summary -->
+    <div class="print-profile-info" id="printProfileInfo" style="display:none; align-items:center; gap:16px; flex:1;">
+      <div style="font-family:'Fredoka One',cursive;font-size:1.05rem;color:#3a8fa0;" id="printProfileName"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;" id="printProfileTags"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- PRINT-ONLY HEADER (hidden in normal view) -->
+<div class="print-header" id="printHeader" style="display:none">
+  <div style="font-family:'Fredoka One',cursive;font-size:1.6rem;color:#3a8fa0;letter-spacing:2px;">💊 MEDICATION LIST</div>
+  <div class="print-date" id="printDate"></div>
+</div>
+
+<!-- MAIN -->
+<div class="container">
+
+  <!-- FORM -->
+  <div class="form-panel">
+    <div class="form-header">
+      <span class="icon">✏️</span>
+      <h2 id="formTitle">Add New Medication</h2>
+    </div>
+    <div class="form-body">
+
+      <div class="field-group">
+        <label>Medication Name *</label>
+        <input type="text" id="f_name" placeholder="e.g. Amoxicillin">
+      </div>
+
+      <div class="field-group">
+        <label>Medicine Photo <small style="text-transform:none;font-weight:600;color:#aac">(optional)</small></label>
+        <div class="photo-upload-area" id="photoUploadArea">
+          <input type="file" id="f_photo" accept="image/*" onchange="handlePhotoUpload(event)">
+          <div id="photoPlaceholder" class="upload-placeholder">
+            <span class="upload-icon">📷</span>
+            <p>Click to upload photo</p>
+            <small>JPG, PNG, GIF — any size</small>
+          </div>
+          <div id="photoPreviewWrap" class="photo-preview-wrap" style="display:none">
+            <img id="photoPreview" class="photo-preview" src="" alt="Medicine photo">
+            <button class="photo-remove" onclick="removePhoto(event)" title="Remove photo">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <span class="color-label">Row Color</span>
+        <div class="color-swatches" id="colorSwatches"></div>
+      </div>
+
+      <div class="row-2">
+        <div class="field-group">
+          <label>Start Date</label>
+          <input type="date" id="f_date">
+        </div>
+        <div class="field-group">
+          <label>Dose</label>
+          <input type="text" id="f_dose" placeholder="e.g. 5mg">
+        </div>
+      </div>
+
+      <div class="row-2">
+        <div class="field-group">
+          <label>Route</label>
+          <select id="f_route">
+            <option value="Orally">Orally</option>
+            <option value="Injection">Injection</option>
+            <option value="Topical">Topical</option>
+            <option value="Inhaled">Inhaled</option>
+            <option value="Sublingual">Sublingual</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Num. Refills</label>
+          <input type="number" id="f_refills" placeholder="0" min="0">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>Time &amp; Frequency</label>
+        <div class="freq-chips" id="freqChips">
+          <span class="chip" data-val="Morning – 1 pill">🌅 Morning</span>
+          <span class="chip" data-val="Afternoon – 1 pill">☀️ Afternoon</span>
+          <span class="chip" data-val="Evening – 1 pill">🌙 Evening</span>
+          <span class="chip" data-val="Once daily">1× Daily</span>
+          <span class="chip" data-val="Twice daily">2× Daily</span>
+          <span class="chip" data-val="Three times daily">3× Daily</span>
+          <span class="chip" data-val="As needed">As needed</span>
+        </div>
+        <input type="text" id="f_freq" placeholder="Or type custom schedule…" style="margin-top:8px">
+      </div>
+
+      <div class="row-2">
+        <div class="field-group">
+          <label>Reason / Condition</label>
+          <input type="text" id="f_reason" placeholder="e.g. Allergy">
+        </div>
+        <div class="field-group">
+          <label>Notes / Side Effects</label>
+          <input type="text" id="f_notes" placeholder="e.g. Drowsiness">
+        </div>
+      </div>
+
+      <input type="hidden" id="f_editId">
+      <button class="btn-submit" onclick="submitForm()">＋ Add Medication</button>
+      <button class="btn-cancel" id="cancelBtn" style="display:none" onclick="cancelEdit()">✕ Cancel Edit</button>
+    </div>
+  </div>
+
+  <!-- LIST -->
+  <div class="list-panel">
+    <div class="list-toolbar">
+      <h2>My Medications</h2>
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Search…" oninput="renderList()">
+      </div>
+    </div>
+    <div id="medList"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA ──
+const COLORS = [
+  { name:'Purple',  bg:'#b39ddb', text:'#fff', pill1:'#7e57c2', pill2:'#d1c4e9' },
+  { name:'Teal',    bg:'#80cbc4', text:'#fff', pill1:'#26a69a', pill2:'#b2dfdb' },
+  { name:'Pink',    bg:'#f48fb1', text:'#fff', pill1:'#e91e63', pill2:'#fce4ec' },
+  { name:'Blue',    bg:'#90caf9', text:'#fff', pill1:'#1e88e5', pill2:'#bbdefb' },
+  { name:'Yellow',  bg:'#fff176', text:'#555', pill1:'#fbc02d', pill2:'#fff9c4' },
+  { name:'Orange',  bg:'#ffcc80', text:'#555', pill1:'#fb8c00', pill2:'#fff3e0' },
+  { name:'Lime',    bg:'#c5e1a5', text:'#555', pill1:'#7cb342', pill2:'#f1f8e9' },
+  { name:'Red',     bg:'#ef9a9a', text:'#fff', pill1:'#e53935', pill2:'#ffebee' },
+];
+
+let meds = JSON.parse(localStorage.getItem('meds') || '[]');
+let selectedColor = 0;
+let editId = null;
+
+// ── INIT ──
+function init() {
+  loadProfile();
+  buildSwatches();
+  renderList();
+  document.getElementById('f_date').valueAsDate = new Date();
+}
+
+// ── COLOR SWATCHES ──
+function buildSwatches() {
+  const wrap = document.getElementById('colorSwatches');
+  wrap.innerHTML = '';
+  COLORS.forEach((c, i) => {
+    const div = document.createElement('div');
+    div.className = 'swatch' + (i === selectedColor ? ' selected' : '');
+    div.style.background = c.bg;
+    div.title = c.name;
+    div.onclick = () => { selectedColor = i; buildSwatches(); };
+    wrap.appendChild(div);
+  });
+}
+
+// ── FREQ CHIPS ──
+document.getElementById('freqChips').addEventListener('click', e => {
+  if (!e.target.classList.contains('chip')) return;
+  const chip = e.target;
+  const val = chip.dataset.val;
+  const inp = document.getElementById('f_freq');
+  const cur = inp.value.trim();
+  // Toggle chip active
+  chip.classList.toggle('active');
+  if (chip.classList.contains('active')) {
+    inp.value = cur ? cur + '\n' + val : val;
+  } else {
+    inp.value = inp.value.replace(val, '').replace(/\n\n/g, '\n').trim();
+  }
+});
+
+// ── SUBMIT ──
+function submitForm() {
+  const name = document.getElementById('f_name').value.trim();
+  if (!name) { showToast('⚠️ Please enter a medication name'); return; }
+
+  const med = {
+    id: editId || Date.now().toString(),
+    name,
+    color: selectedColor,
+    photo: currentPhotoData || null,
+    date: document.getElementById('f_date').value,
+    dose: document.getElementById('f_dose').value.trim(),
+    route: document.getElementById('f_route').value,
+    refills: document.getElementById('f_refills').value,
+    freq: document.getElementById('f_freq').value.trim(),
+    reason: document.getElementById('f_reason').value.trim(),
+    notes: document.getElementById('f_notes').value.trim(),
+  };
+
+  if (editId) {
+    const idx = meds.findIndex(m => m.id === editId);
+    if (idx > -1) meds[idx] = med;
+    showToast('✅ Medication updated!');
+  } else {
+    meds.unshift(med);
+    showToast('💊 Medication added!');
+  }
+
+  save(); resetForm(); renderList();
+}
+
+function resetForm() {
+  ['f_name','f_dose','f_freq','f_reason','f_notes','f_refills'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f_date').valueAsDate = new Date();
+  document.getElementById('f_route').value = 'Orally';
+  document.getElementById('f_editId').value = '';
+  document.getElementById('cancelBtn').style.display = 'none';
+  document.getElementById('formTitle').textContent = 'Add New Medication';
+  document.querySelector('.btn-submit').textContent = '＋ Add Medication';
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  editId = null;
+  selectedColor = 0;
+  currentPhotoData = null;
+  resetPhotoUI();
+  buildSwatches();
+}
+
+function cancelEdit() { resetForm(); }
+
+// ── EDIT ──
+function editMed(id) {
+  const med = meds.find(m => m.id === id);
+  if (!med) return;
+  editId = id;
+  document.getElementById('f_name').value = med.name;
+  document.getElementById('f_date').value = med.date;
+  document.getElementById('f_dose').value = med.dose;
+  document.getElementById('f_route').value = med.route;
+  document.getElementById('f_refills').value = med.refills;
+  document.getElementById('f_freq').value = med.freq;
+  document.getElementById('f_reason').value = med.reason;
+  document.getElementById('f_notes').value = med.notes;
+  // Load photo
+  currentPhotoData = med.photo || null;
+  if (med.photo) {
+    document.getElementById('photoPreview').src = med.photo;
+    document.getElementById('photoPlaceholder').style.display = 'none';
+    document.getElementById('photoPreviewWrap').style.display = 'inline-block';
+  } else {
+    resetPhotoUI();
+  }
+  selectedColor = med.color;
+  buildSwatches();
+  document.getElementById('formTitle').textContent = 'Edit Medication';
+  document.querySelector('.btn-submit').textContent = '✔ Save Changes';
+  document.getElementById('cancelBtn').style.display = 'block';
+  document.querySelector('.form-panel').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ── DELETE ──
+function deleteMed(id) {
+  if (!confirm('Delete this medication?')) return;
+  meds = meds.filter(m => m.id !== id);
+  save(); renderList();
+  showToast('🗑️ Medication removed');
+}
+
+// ── RENDER ──
+function renderList() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const filtered = meds.filter(m =>
+    m.name.toLowerCase().includes(q) ||
+    (m.reason || '').toLowerCase().includes(q) ||
+    (m.notes || '').toLowerCase().includes(q)
+  );
+
+  const list = document.getElementById('medList');
+  document.getElementById('medCountBadge').textContent = meds.length + ' medication' + (meds.length !== 1 ? 's' : '');
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty">
+      <span class="icon">🏥</span>
+      <p>${meds.length === 0 ? 'No medications added yet' : 'No results found'}</p>
+      <small>${meds.length === 0 ? 'Fill in the form on the left to get started!' : 'Try a different search term'}</small>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(med => {
+    const c = COLORS[med.color] || COLORS[0];
+    const freqLines = med.freq ? med.freq.split('\n').join(' · ') : '—';
+    const dateStr = med.date ? new Date(med.date + 'T00:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '';
+    return `
+    <div class="med-card">
+      <div class="card-top">
+        <div class="card-color-bar" style="background:${c.bg}; min-height:90px;"></div>
+        <div class="card-photo-wrap">
+          ${med.photo
+            ? `<img class="card-photo" src="${med.photo}" alt="${med.name}">`
+            : `<div class="card-photo-placeholder">💊</div>`}
+        </div>
+        <div class="card-main">
+          <div class="card-name" style="color:${c.bg === '#fff176' || c.bg === '#c5e1a5' || c.bg === '#ffcc80' ? '#555' : c.bg}">${med.name}</div>
+          <div class="card-meta">
+            ${med.dose   ? `<span class="badge dose">💊 ${med.dose}</span>` : ''}
+            ${med.route  ? `<span class="badge route">🔀 ${med.route}</span>` : ''}
+            ${med.refills ? `<span class="badge refills">🔄 ${med.refills} refills</span>` : ''}
+            ${med.reason ? `<span class="badge reason">📋 ${med.reason}</span>` : ''}
+          </div>
+          ${med.freq ? `<div class="card-freq">⏰ ${freqLines}</div>` : ''}
+          ${med.notes ? `<div class="card-notes">📝 ${med.notes}</div>` : ''}
+          ${dateStr ? `<div class="card-date">📅 Started ${dateStr}</div>` : ''}
+        </div>
+        <div class="card-actions">
+          <button class="btn-edit" onclick="editMed('${med.id}')">✏️ Edit</button>
+          <button class="btn-delete" onclick="deleteMed('${med.id}')">🗑 Delete</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── PATIENT PROFILE ──
+let profile = JSON.parse(localStorage.getItem('patientProfile') || '{}');
+
+function loadProfile() {
+  if (profile.name)   document.getElementById('p_name').value   = profile.name;
+  if (profile.age)    document.getElementById('p_age').value    = profile.age;
+  if (profile.weight) document.getElementById('p_weight').value = profile.weight;
+  if (profile.height) document.getElementById('p_height').value = profile.height;
+  if (profile.avatar) {
+    document.getElementById('avatarImg').src = profile.avatar;
+    document.getElementById('avatarImg').style.display = 'block';
+    document.getElementById('avatarPlaceholder').style.display = 'none';
+  }
+}
+
+function markProfileDirty() {
+  document.getElementById('profileSaveBtn').style.display = 'block';
+}
+
+function saveProfile() {
+  profile.name   = document.getElementById('p_name').value.trim();
+  profile.age    = document.getElementById('p_age').value.trim();
+  profile.weight = document.getElementById('p_weight').value.trim();
+  profile.height = document.getElementById('p_height').value.trim();
+  localStorage.setItem('patientProfile', JSON.stringify(profile));
+  document.getElementById('profileSaveBtn').style.display = 'none';
+  showToast('✅ Profile saved!');
+}
+
+function handleAvatarUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    profile.avatar = ev.target.result;
+    document.getElementById('avatarImg').src = profile.avatar;
+    document.getElementById('avatarImg').style.display = 'block';
+    document.getElementById('avatarPlaceholder').style.display = 'none';
+    localStorage.setItem('patientProfile', JSON.stringify(profile));
+    showToast('🖼️ Photo updated!');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── PHOTO ──
+let currentPhotoData = null;
+
+function handlePhotoUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    currentPhotoData = ev.target.result;
+    document.getElementById('photoPreview').src = currentPhotoData;
+    document.getElementById('photoPlaceholder').style.display = 'none';
+    document.getElementById('photoPreviewWrap').style.display = 'inline-block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removePhoto(e) {
+  e.stopPropagation();
+  e.preventDefault();
+  currentPhotoData = null;
+  resetPhotoUI();
+  document.getElementById('f_photo').value = '';
+}
+
+function resetPhotoUI() {
+  document.getElementById('photoPlaceholder').style.display = 'block';
+  document.getElementById('photoPreviewWrap').style.display = 'none';
+  document.getElementById('photoPreview').src = '';
+}
+
+// ── PRINT ──
+function printList() {
+  // Fill print-only date
+  const now = new Date();
+  document.getElementById('printDate').textContent =
+    'Printed: ' + now.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  // Fill print-only profile summary
+  const name   = profile.name   || '';
+  const age    = profile.age    ? 'Age: ' + profile.age    : '';
+  const weight = profile.weight ? 'Weight: ' + profile.weight : '';
+  const height = profile.height ? 'Height: ' + profile.height : '';
+
+  document.getElementById('printProfileName').textContent = name || 'Patient';
+  const tags = [age, weight, height].filter(Boolean);
+  document.getElementById('printProfileTags').innerHTML = tags
+    .map(t => `<span style="background:#e0f7fa;border:1.5px solid #b8e4f0;border-radius:20px;padding:3px 10px;font-size:0.75rem;font-weight:700;color:#3a8fa0;">${t}</span>`)
+    .join('');
+
+  window.print();
+}
+
+// ── UTILS ──
+function save() { localStorage.setItem('meds', JSON.stringify(meds)); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+init();
+</script>
+</body>
+</html>
