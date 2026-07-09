@@ -1,0 +1,519 @@
+<div id="app-root"></div>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  #app-root {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 20px;
+    color: #1d1d1f;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid #e5e5e7;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  h1 { font-size: 22px; font-weight: 700; margin: 0 0 4px 0; }
+  .subtitle { color: #6e6e73; font-size: 14px; margin-bottom: 20px; }
+  .upload-zone {
+    border: 2px dashed #c7c7cc;
+    border-radius: 14px;
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .upload-zone:hover { border-color: #0071e3; background: #f5f9ff; }
+  .upload-zone svg { width: 32px; height: 32px; color: #8e8e93; margin-bottom: 8px; }
+  .upload-zone p { margin: 0; font-size: 14px; color: #6e6e73; }
+  .upload-zone .hint { font-size: 12px; margin-top: 4px; color: #a1a1a6; }
+  input[type="file"] { display: none; }
+  #preview-wrap { display: none; margin-top: 14px; }
+  #preview-wrap img, #procCanvas { width: 100%; border-radius: 12px; display: block; }
+  .btn {
+    width: 100%; padding: 13px; border-radius: 12px; border: none;
+    font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 12px;
+  }
+  .btn-primary { background: #0071e3; color: #fff; }
+  .btn-primary:disabled { background: #c7c7cc; cursor: not-allowed; }
+  .btn-secondary { background: #f2f2f7; color: #1d1d1f; }
+  #status { font-size: 13px; color: #6e6e73; text-align: center; margin-top: 10px; min-height: 16px; }
+  .progress-bar-bg { height: 4px; background: #e5e5e7; border-radius: 2px; overflow: hidden; margin-top: 8px; display: none; }
+  .progress-bar-fill { height: 100%; background: #0071e3; width: 0%; transition: width 0.15s; }
+  .result-title { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: #8e8e93; font-weight: 600; margin-bottom: 10px; }
+  .result-model { font-size: 26px; font-weight: 700; margin-bottom: 2px; }
+  .result-gen {
+    display: inline-block; background: #e8f2ff; color: #0071e3; font-weight: 700;
+    font-size: 13px; padding: 4px 10px; border-radius: 8px; margin-bottom: 10px;
+  }
+  .result-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #6e6e73; font-size: 13px; margin-bottom: 14px; }
+  .spec-row { display: flex; justify-content: space-between; font-size: 14px; padding: 8px 0; border-top: 1px solid #f2f2f7; gap: 12px; }
+  .spec-row span:first-child { color: #6e6e73; flex-shrink: 0; }
+  .spec-row span:last-child { font-weight: 500; text-align: right; }
+  .not-found { text-align: center; padding: 10px 0; }
+  .not-found .code-found { font-family: ui-monospace, monospace; background: #f2f2f7; padding: 4px 10px; border-radius: 6px; display: inline-block; margin: 8px 0; }
+  .manual-entry { margin-top: 4px; }
+  .manual-entry label { font-size: 13px; color: #6e6e73; display: block; margin-bottom: 6px; }
+  .manual-entry input {
+    width: 100%; padding: 11px 12px; border: 1px solid #d2d2d7; border-radius: 10px;
+    font-size: 15px; font-family: ui-monospace, monospace; text-transform: uppercase;
+  }
+  .ocr-raw { font-size: 11px; color: #a1a1a6; font-family: ui-monospace, monospace; margin-top: 10px; word-break: break-all; max-height: 60px; overflow-y: auto; }
+  .note { font-size: 12px; color: #a1a1a6; line-height: 1.5; margin-top: 4px; }
+  .variant-list { margin-top: 6px; }
+  .variant-pill {
+    display: block; text-align: left; width: 100%; padding: 10px 12px; margin-top: 6px;
+    border: 1px solid #e5e5e7; border-radius: 10px; background: #fafafa; font-size: 13px;
+  }
+</style>
+
+<script>
+(function() {
+  // ---------- Region codes for Apple Part Numbers (the letters before "/A") ----------
+  const REGION_CODES = {
+    'J': 'Japan', 'LL': 'USA / Canada (North America)', 'B': 'UK / Ireland',
+    'CH': 'China (mainland)', 'ZP': 'Hong Kong / Singapore', 'KH': 'Hong Kong',
+    'TA': 'Taiwan', 'RS': 'Russia', 'X': 'Australia / New Zealand', 'TU': 'Turkey',
+    'ZA': 'Southeast Asia', 'FD': 'various EU / Switzerland (locked variants)',
+    'A': 'Canada', 'C': 'Canada', 'D': 'Germany', 'F': 'France',
+    'IT': 'Italy', 'KR': 'South Korea', 'S': 'South Korea', 'MG': 'Mongolia',
+    'ID': 'Indonesia', 'IN': 'India', 'TH': 'Thailand', 'VN': 'Vietnam',
+    'BZ': 'Brazil', 'MX': 'Mexico'
+  };
+
+  function decodePartNumber(raw) {
+    if (!raw) return null;
+    const s = raw.toUpperCase().replace(/\s/g, '');
+    const m = s.match(/^([A-Z]{2}\d{3})([A-Z]{0,3})\/A$/);
+    if (!m) return null;
+    const prefix = m[1];
+    const region = m[2];
+    return {
+      prefix: prefix,
+      regionCode: region || null,
+      regionName: region ? (REGION_CODES[region] || `Unrecognized region code (${region})`) : 'No region suffix detected'
+    };
+  }
+
+  // ---------- Pre-2010 11-character Apple serial format (used on all iPods) ----------
+  const SERIAL_YEAR_MAP = { '1':2001,'2':2002,'3':2003,'4':2004,'5':2005,'6':2006,'7':2007,'8':2008,'9':2009,'0':2010 };
+  const SERIAL_PLANT_MAP = {
+    'YM': 'Foxconn / Hon Hai, China', '7J': 'Foxconn / Hon Hai, China',
+    'F1': 'Foxconn, Zhengzhou, China', 'F2': 'Foxconn, Zhengzhou, China',
+    'DL': 'Foxconn, China', 'DM': 'Foxconn, China', 'DN': 'Foxconn, Chengdu, China',
+    'W8': 'Shanghai, China', 'C0': 'Tech Com / Quanta subsidiary, China',
+    'C3': 'Foxconn, Shenzhen, China', 'C7': 'Pentragon, Changhai, China',
+    'PT': 'Korea', 'CY': 'Korea', 'EE': 'Taiwan', 'QT': 'Taiwan', 'UV': 'Taiwan',
+    'SG': 'Singapore', 'MB': 'Malaysia', '1C': 'China', '4H': 'China',
+    'WQ': 'China', 'F7': 'China', 'RM': 'Refurbished / remanufactured unit'
+  };
+
+  function decodeOldSerial(serial) {
+    if (!serial || serial.length !== 11) return null;
+    const s = serial.toUpperCase();
+    if (!/^[A-Z0-9]{11}$/.test(s)) return null;
+    const plantCode = s.slice(0, 2);
+    const yearChar = s[2];
+    const week = parseInt(s.slice(3, 5), 10);
+    if (!(yearChar in SERIAL_YEAR_MAP) || isNaN(week) || week < 1 || week > 53) return null;
+    return {
+      plant: SERIAL_PLANT_MAP[plantCode] || `Unknown plant code (${plantCode})`,
+      year: SERIAL_YEAR_MAP[yearChar],
+      week: week,
+      configCode: s.slice(8, 11)
+    };
+  }
+
+  // ---------- Model database ----------
+  const MODEL_DB = {
+    "A1136": {
+      family: "iPod (Video)",
+      variants: [
+        { gen: "5th generation", note: "Original Video model", capacity: "30GB / 60GB", released: "October 2005",
+          partPrefixes: ["MA002","MA146","PA002","PA146"], serialSuffixes: ["V9K","V9P","V9M","V9R","V9L","V9N","V9Q","V9S","WU9","WUA","WUB","WUC","X3N"] },
+        { gen: "5th generation (Late 2006) — a.k.a. \"5.5-gen\" Enhanced", note: "Brighter screen, longer battery life", capacity: "30GB / 80GB", released: "September 2006",
+          partPrefixes: ["MA444","MA446","PA444","PA446","MA664"], serialSuffixes: ["W9G"] }
+      ]
+    },
+    "A1238": {
+      family: "iPod Classic",
+      variants: [
+        { gen: "6th generation", note: "First model branded \"iPod Classic\"", capacity: "80GB / 160GB", released: "September 2007",
+          partPrefixes: ["MB029","MB147"], serialSuffixes: ["Y5N","YMU","YMV","YMX"] },
+        { gen: "6th generation (120GB refresh)", note: "Sometimes called \"6.5-gen\"", capacity: "120GB", released: "September 2008",
+          partPrefixes: ["MB565","PB565","MB562","PB562"], serialSuffixes: [] },
+        { gen: "7th generation", note: "Final iPod Classic, thinner design", capacity: "160GB", released: "September 2009",
+          partPrefixes: ["PC297","MC297","PC293","MC293"], serialSuffixes: [] }
+      ]
+    },
+    "A1051": { family: "iPod mini", variants: [{ gen: "1st / 2nd generation", capacity: "4GB / 6GB", released: "2004–2005", partPrefixes: [], serialSuffixes: [] }] },
+    "A1099": { family: "iPod (Click Wheel / Photo / Color)", variants: [{ gen: "4th generation", capacity: "20GB / 40GB / 60GB", released: "2004–2005", partPrefixes: [], serialSuffixes: [] }] },
+    "A1059": { family: "iPod (Click Wheel)", variants: [{ gen: "4th generation (original)", capacity: "20GB / 40GB", released: "July 2004", partPrefixes: [], serialSuffixes: [] }] },
+    "A1040": { family: "iPod (Dock Connector)", variants: [{ gen: "3rd generation", capacity: "10GB / 15GB / 20GB / 30GB / 40GB", released: "2003", partPrefixes: [], serialSuffixes: [] }] },
+    "A1019": { family: "iPod (Touch Wheel)", variants: [{ gen: "2nd generation", capacity: "10GB / 20GB", released: "July 2002", partPrefixes: [], serialSuffixes: [] }] },
+    "A1137": { family: "iPod nano", variants: [{ gen: "1st generation", capacity: "1GB / 2GB / 4GB", released: "September 2005", partPrefixes: [], serialSuffixes: [] }] },
+    "A1199": { family: "iPod nano", variants: [{ gen: "2nd generation", capacity: "2GB / 4GB / 8GB", released: "September 2006", partPrefixes: [], serialSuffixes: [] }] },
+    "A1236": { family: "iPod nano", variants: [{ gen: "3rd generation", capacity: "4GB / 8GB", released: "September 2007", partPrefixes: [], serialSuffixes: ["YOP","YOR","YXR","YXT","YXV","YXX"] }] },
+    "A1285": { family: "iPod nano", variants: [{ gen: "4th generation", capacity: "8GB / 16GB", released: "September 2008", partPrefixes: [], serialSuffixes: [] }] },
+    "A1320": { family: "iPod nano", variants: [{ gen: "5th generation", capacity: "8GB / 16GB", released: "September 2009", partPrefixes: [], serialSuffixes: [] }] },
+    "A1366": { family: "iPod nano", variants: [{ gen: "6th generation", capacity: "8GB / 16GB", released: "September 2010", partPrefixes: [], serialSuffixes: [] }] },
+    "A1446": { family: "iPod nano", variants: [{ gen: "7th generation", capacity: "16GB", released: "October 2012 / July 2015", partPrefixes: [], serialSuffixes: [] }] },
+    "A1112": { family: "iPod shuffle", variants: [{ gen: "1st generation", capacity: "512MB / 1GB", released: "January 2005", partPrefixes: [], serialSuffixes: [] }] },
+    "A1204": { family: "iPod shuffle", variants: [{ gen: "2nd generation", capacity: "1GB / 2GB", released: "2006–2008", partPrefixes: [], serialSuffixes: ["1ZH","1ZK","1ZM","1ZP","1ZR"] }] },
+    "A1271": { family: "iPod shuffle", variants: [{ gen: "3rd generation", capacity: "2GB / 4GB", released: "2009", partPrefixes: [], serialSuffixes: [] }] },
+    "A1373": { family: "iPod shuffle", variants: [{ gen: "4th generation", capacity: "2GB", released: "2010 / 2012 / 2015", partPrefixes: [], serialSuffixes: [] }] },
+    "A1213": { family: "iPod touch", variants: [{ gen: "1st generation", capacity: "8GB / 16GB / 32GB", released: "September 2007", partPrefixes: [], serialSuffixes: [] }] },
+    "A1288": { family: "iPod touch", variants: [{ gen: "2nd generation", capacity: "8GB / 16GB / 32GB", released: "September 2008", partPrefixes: [], serialSuffixes: [] }] },
+    "A1318": { family: "iPod touch", variants: [{ gen: "3rd generation", capacity: "32GB / 64GB", released: "September 2009", partPrefixes: [], serialSuffixes: [] }] },
+    "A1367": { family: "iPod touch", variants: [{ gen: "4th generation", capacity: "8GB / 16GB / 32GB / 64GB", released: "September 2010", partPrefixes: [], serialSuffixes: [] }] },
+    "A1421": { family: "iPod touch", variants: [{ gen: "5th generation", capacity: "16GB / 32GB / 64GB", released: "October 2012", partPrefixes: [], serialSuffixes: [] }] },
+    "A1509": { family: "iPod touch", variants: [{ gen: "5th generation (refresh)", capacity: "16GB / 32GB / 64GB / 128GB", released: "2013–2014", partPrefixes: [], serialSuffixes: [] }] },
+    "A1574": { family: "iPod touch", variants: [{ gen: "6th generation", capacity: "16GB / 32GB / 64GB / 128GB", released: "July 2015", partPrefixes: [], serialSuffixes: [] }] },
+    "A2178": { family: "iPod touch", variants: [{ gen: "7th generation", capacity: "32GB / 128GB / 256GB", released: "May 2019", partPrefixes: [], serialSuffixes: [] }] }
+  };
+
+  // ---------- UI shell ----------
+  const root = document.getElementById('app-root');
+  root.innerHTML = `
+    <h1>📱 iPod Identifier</h1>
+    <div class="subtitle">Photograph the back of the iPod — model number, part number, and serial if visible.</div>
+
+    <div class="card">
+      <label class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept="image/*" capture="environment" />
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+        <p><strong>Tap to take a photo or upload</strong></p>
+        <div class="hint">Fill the frame, use bright even light, avoid glare on the metal</div>
+      </label>
+      <div id="preview-wrap">
+        <canvas id="procCanvas" style="display:none;"></canvas>
+        <img id="previewImg" alt="preview"/>
+        <button class="btn btn-primary" id="scanBtn">Scan this photo</button>
+        <button class="btn btn-secondary" id="retakeBtn">Choose a different photo</button>
+      </div>
+      <div class="progress-bar-bg" id="progBg"><div class="progress-bar-fill" id="progFill"></div></div>
+      <div id="status"></div>
+    </div>
+
+    <div class="card" id="resultCard" style="display:none;"></div>
+
+    <div class="card">
+      <div class="manual-entry">
+        <label>Model number (e.g. A1136)</label>
+        <input type="text" id="manualInput" placeholder="A1136" maxlength="8"/>
+      </div>
+      <div class="manual-entry" style="margin-top:12px;">
+        <label>Part No. — optional, the best way to pin exact generation + region (e.g. MA444J/A)</label>
+        <input type="text" id="partInput" placeholder="MA444J/A" maxlength="12"/>
+      </div>
+      <div class="manual-entry" style="margin-top:12px;">
+        <label>Serial No. — optional, 11 characters, narrows down manufacture date</label>
+        <input type="text" id="serialInput" placeholder="YM548ABCDEF" maxlength="11"/>
+      </div>
+      <button class="btn btn-primary" id="lookupBtn">Look up manually</button>
+      <div class="note">
+        <strong>Model number</strong> narrows it to a product family, but several iPod generations share the exact same model number (e.g. A1136 covers both the 5th-gen and "5.5-gen" Video; A1238 covers the 6th, 6.5-gen, and 7th-gen Classic). The <strong>Part No.</strong> is the most reliable way to identify the exact generation and the region it was sold in. Serial-based date decoding is an unofficial, community-reverse-engineered scheme — treat it as a rough estimate.
+      </div>
+    </div>
+  `;
+
+  const fileInput = document.getElementById('fileInput');
+  const uploadZone = document.getElementById('uploadZone');
+  const previewWrap = document.getElementById('preview-wrap');
+  const previewImg = document.getElementById('previewImg');
+  const procCanvas = document.getElementById('procCanvas');
+  const scanBtn = document.getElementById('scanBtn');
+  const retakeBtn = document.getElementById('retakeBtn');
+  const statusEl = document.getElementById('status');
+  const progBg = document.getElementById('progBg');
+  const progFill = document.getElementById('progFill');
+  const resultCard = document.getElementById('resultCard');
+  const manualInput = document.getElementById('manualInput');
+  const partInput = document.getElementById('partInput');
+  const serialInput = document.getElementById('serialInput');
+  const lookupBtn = document.getElementById('lookupBtn');
+
+  let currentFile = null;
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    currentFile = file;
+    const url = URL.createObjectURL(file);
+    previewImg.src = url;
+    uploadZone.style.display = 'none';
+    previewWrap.style.display = 'block';
+    resultCard.style.display = 'none';
+    statusEl.textContent = '';
+  });
+
+  retakeBtn.addEventListener('click', () => {
+    uploadZone.style.display = 'block';
+    previewWrap.style.display = 'none';
+    resultCard.style.display = 'none';
+    fileInput.value = '';
+    statusEl.textContent = '';
+  });
+
+  // Preprocess: grayscale + contrast stretch + upscale small images.
+  // Etched/engraved metal text is low-contrast, so this materially helps OCR.
+  function preprocessImage(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = img.width < 1000 ? (1000 / img.width) : 1;
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        procCanvas.width = w;
+        procCanvas.height = h;
+        const ctx = procCanvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+
+        const imageData = ctx.getImageData(0, 0, w, h);
+        const d = imageData.data;
+
+        let min = 255, max = 0;
+        for (let i = 0; i < d.length; i += 4) {
+          const gray = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+          d[i] = d[i+1] = d[i+2] = gray;
+          if (gray < min) min = gray;
+          if (gray > max) max = gray;
+        }
+        const range = Math.max(max - min, 1);
+        for (let i = 0; i < d.length; i += 4) {
+          const stretched = ((d[i] - min) / range) * 255;
+          d[i] = d[i+1] = d[i+2] = stretched;
+        }
+        ctx.putImageData(imageData, 0, 0);
+
+        procCanvas.toBlob((blob) => {
+          if (blob) resolve(blob); else reject(new Error('Canvas toBlob failed'));
+        }, 'image/png');
+      };
+      img.onerror = () => reject(new Error('Image failed to load'));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  function findModelCode(text) {
+    const cleaned = text.toUpperCase().replace(/O/g, '0').replace(/[^A-Z0-9\s]/g, ' ');
+    const matches = cleaned.match(/A\s?1\d{3}|A\s?2\d{3}/g);
+    if (!matches) return null;
+    return matches.map(m => m.replace(/\s/g, ''));
+  }
+
+  function findSerialCode(text) {
+    const upper = text.toUpperCase();
+    const tokens = upper.match(/\b[A-Z0-9]{11}\b/g);
+    if (!tokens) return null;
+    const candidates = tokens.filter(t => !/^A1\d{3}/.test(t) && !/^A2\d{3}/.test(t));
+    return candidates.length ? candidates[0] : null;
+  }
+
+  function findPartNumber(text) {
+    const upper = text.toUpperCase().replace(/\s/g, '');
+    const m = upper.match(/[A-Z]{2}\d{3}[A-Z]{0,3}\/A/);
+    return m ? m[0] : null;
+  }
+
+  function matchVariant(modelInfo, partNo, serialSuffix) {
+    if (!modelInfo) return { variant: null };
+    if (modelInfo.variants.length === 1) return { variant: modelInfo.variants[0] };
+
+    if (partNo) {
+      const decoded = decodePartNumber(partNo);
+      if (decoded) {
+        const match = modelInfo.variants.find(v => v.partPrefixes.includes(decoded.prefix));
+        if (match) return { variant: match, region: decoded };
+      }
+    }
+    if (serialSuffix) {
+      const suf3 = serialSuffix.toUpperCase().slice(-3);
+      const match = modelInfo.variants.find(v => v.serialSuffixes.includes(suf3));
+      if (match) return { variant: match };
+    }
+    return { variant: null };
+  }
+
+  function renderSerialInfo(serial) {
+    const decoded = decodeOldSerial(serial);
+    if (!decoded) {
+      return `<div class="note">Serial "${serial}" doesn't match the expected 11-character pre-2010 format, so no date could be decoded.</div>`;
+    }
+    const halfHint = decoded.week <= 26 ? 'first half' : 'second half';
+    return `
+      <div class="spec-row"><span>Serial number</span><span>${serial.toUpperCase()}</span></div>
+      <div class="spec-row"><span>Est. manufacture</span><span>Week ${decoded.week}, ${decoded.year} (${halfHint})</span></div>
+      <div class="spec-row"><span>Assembly plant</span><span>${decoded.plant}</span></div>
+      <div class="note">Manufacture date is an unofficial, reverse-engineered estimate — a sanity check, not a guarantee.</div>
+    `;
+  }
+
+  function renderPartInfo(partNo) {
+    const decoded = decodePartNumber(partNo);
+    if (!decoded) {
+      return `<div class="note">Part No. "${partNo}" doesn't match the expected pattern (e.g. MA444J/A), so no region could be decoded.</div>`;
+    }
+    return `
+      <div class="spec-row"><span>Part No.</span><span>${partNo.toUpperCase()}</span></div>
+      <div class="spec-row"><span>Region</span><span>${decoded.regionName}${decoded.regionCode === 'J' ? ' 🇯🇵' : ''}</span></div>
+    `;
+  }
+
+  function renderResult(code, detectedSerial, detectedPart) {
+    resultCard.style.display = 'block';
+    const modelInfo = MODEL_DB[code];
+
+    if (!modelInfo) {
+      resultCard.innerHTML = `
+        <div class="not-found">
+          <div class="result-title">Model not in database</div>
+          <div class="code-found">${code || '—'}</div>
+          <div class="note">This looks like a model number but isn't catalogued yet. Double-check against the etched text, or it may be a rare regional variant.</div>
+        </div>
+      `;
+      return;
+    }
+
+    const { variant } = matchVariant(modelInfo, detectedPart, detectedSerial);
+    const partBlock = detectedPart ? renderPartInfo(detectedPart) : '';
+    const serialBlock = detectedSerial ? renderSerialInfo(detectedSerial) : '';
+
+    if (variant) {
+      resultCard.innerHTML = `
+        <div class="result-title">Identified</div>
+        <div class="result-model">iPod ${modelInfo.family}</div>
+        <div class="result-gen">${variant.gen}</div>
+        <div class="result-code">Model ${code}${variant.note ? ' · ' + variant.note : ''}</div>
+        <div class="spec-row"><span>Capacity</span><span>${variant.capacity}</span></div>
+        <div class="spec-row"><span>Released</span><span>${variant.released}</span></div>
+        ${partBlock}
+        ${serialBlock}
+      `;
+    } else {
+      const options = modelInfo.variants.map(v => `
+        <div class="variant-pill">
+          <strong>${v.gen}</strong><br>
+          ${v.capacity} · ${v.released}${v.partPrefixes.length ? ' · Part No. starts with ' + v.partPrefixes.join(', ') : ''}
+        </div>
+      `).join('');
+      resultCard.innerHTML = `
+        <div class="result-title">Model ${code} — multiple generations share this number</div>
+        <div class="result-model">iPod ${modelInfo.family}</div>
+        <div class="note">Apple reused this model number across generations. To pin down which one you have, enter the <strong>Part No.</strong> below (found near the model number, formatted like "MA444J/A") — that's the reliable disambiguator.</div>
+        <div class="variant-list">${options}</div>
+        ${partBlock}
+        ${serialBlock}
+      `;
+    }
+  }
+
+  async function runOCR(imageSource) {
+    if (typeof Tesseract === 'undefined') {
+      throw new Error('LIBRARY_NOT_LOADED');
+    }
+    const result = await Tesseract.recognize(imageSource, 'eng', {
+      workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/worker.min.js',
+      corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@4.0.4/tesseract-core.wasm.js',
+      langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+      logger: (m) => {
+        if (m.status === 'recognizing text') {
+          const pct = Math.round(m.progress * 100);
+          progFill.style.width = pct + '%';
+          statusEl.textContent = `Recognizing text… ${pct}%`;
+        } else {
+          statusEl.textContent = m.status;
+        }
+      }
+    });
+    return result.data.text;
+  }
+
+  scanBtn.addEventListener('click', async () => {
+    if (!currentFile) return;
+
+    if (typeof Tesseract === 'undefined') {
+      resultCard.style.display = 'block';
+      resultCard.innerHTML = `
+        <div class="not-found">
+          <div class="result-title" style="color:#d70015;">OCR library didn't load</div>
+          <div class="note">The Tesseract.js script tag never loaded — this preview environment may be blocking the CDN request entirely. Use manual entry below, or download this HTML file and open it directly in Chrome/Safari.</div>
+        </div>
+      `;
+      return;
+    }
+
+    scanBtn.disabled = true;
+    statusEl.textContent = 'Preparing image…';
+    progBg.style.display = 'block';
+    progFill.style.width = '0%';
+
+    try {
+      const processedBlob = await preprocessImage(currentFile);
+      statusEl.textContent = 'Reading image…';
+
+      const rawText = await runOCR(processedBlob);
+      const codes = findModelCode(rawText);
+      const detectedSerial = findSerialCode(rawText);
+      const detectedPart = findPartNumber(rawText);
+
+      progBg.style.display = 'none';
+      scanBtn.disabled = false;
+
+      if (codes && codes.length) {
+        const code = codes[0];
+        manualInput.value = code;
+        if (detectedSerial) serialInput.value = detectedSerial;
+        if (detectedPart) partInput.value = detectedPart;
+        renderResult(code, detectedSerial, detectedPart);
+        statusEl.textContent = 'Done.';
+      } else {
+        resultCard.style.display = 'block';
+        resultCard.innerHTML = `
+          <div class="not-found">
+            <div class="result-title">No model number found</div>
+            <div class="note">Couldn't find an "A####" pattern in the image. Try getting closer, using more light, or angling to reduce glare. You can type the codes manually below.</div>
+            <div class="ocr-raw">Raw OCR text: ${rawText.trim().slice(0, 250) || '(empty)'}</div>
+          </div>
+        `;
+        statusEl.textContent = '';
+      }
+    } catch (err) {
+      progBg.style.display = 'none';
+      scanBtn.disabled = false;
+      statusEl.textContent = '';
+      resultCard.style.display = 'block';
+      const isLibErr = err && err.message === 'LIBRARY_NOT_LOADED';
+      resultCard.innerHTML = `
+        <div class="not-found">
+          <div class="result-title" style="color:#d70015;">${isLibErr ? "OCR library didn't load" : 'OCR failed to run'}</div>
+          <div class="note">${isLibErr
+            ? 'The Tesseract.js script never loaded — likely blocked by this preview sandbox.'
+            : 'The text recognition engine hit an error, likely a sandbox restriction on loading its worker file.'
+          } Use manual entry below, or download this file and open it in a real browser tab, where it should work normally.</div>
+          <div class="ocr-raw">Error detail: ${(err && err.message) ? err.message : String(err)}</div>
+        </div>
+      `;
+      console.error(err);
+    }
+  });
+
+  lookupBtn.addEventListener('click', () => {
+    let code = manualInput.value.toUpperCase().trim().replace(/\s/g, '');
+    if (!code) return;
+    if (!code.startsWith('A')) code = 'A' + code;
+    const partNo = partInput.value.trim();
+    const serial = serialInput.value.trim();
+    renderResult(code, serial || null, partNo || null);
+  });
+
+  [manualInput, partInput, serialInput].forEach(el => {
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') lookupBtn.click(); });
+  });
+})();
+</script>
